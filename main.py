@@ -5,14 +5,6 @@ import math
 from typing import Optional, Tuple
 
 class AdaptiveFeatureMapping(nn.Module):
-    """
-    Research Contribution: Adaptive Feature Mapping for Prefix-Tuning+
-    
-    Key Innovation: Instead of fixed φ(x) = elu(x), learns to adapt the feature 
-    mapping based on input characteristics and layer depth.
-    
-    This addresses the paper's limitation of using simple ELU as "proof of concept"
-    """
     def __init__(self, hidden_size: int, num_layers: int):
         super().__init__()
         self.hidden_size = hidden_size
@@ -47,15 +39,6 @@ class AdaptiveFeatureMapping(nn.Module):
                     nn.init.zeros_(module.bias)
     
     def forward(self, x: torch.Tensor, layer_idx: int) -> torch.Tensor:
-        """
-        Apply adaptive feature mapping
-        
-        Args:
-            x: [batch_size, seq_len, hidden_size]
-            layer_idx: Current layer index
-        Returns:
-            mapped_features: [batch_size, seq_len, hidden_size]
-        """
         # Layer-specific mapping
         layer_mapped = self.layer_mappings[layer_idx](x)
         
@@ -69,12 +52,7 @@ class AdaptiveFeatureMapping(nn.Module):
         return adaptive_features
 
 class HierarchicalPrefixTuning(nn.Module):
-    """
-    Research Contribution: Hierarchical Prefix Structure
-    
-    Key Innovation: Separate global and local prefix components for better
-    expressiveness while maintaining parameter efficiency.
-    """
+
     def __init__(self, hidden_size: int, num_layers: int):
         super().__init__()
         self.hidden_size = hidden_size
@@ -104,15 +82,6 @@ class HierarchicalPrefixTuning(nn.Module):
         nn.init.xavier_uniform_(self.local_projection.weight, gain=0.1)
     
     def forward(self, features: torch.Tensor, layer_idx: int) -> torch.Tensor:
-        """
-        Apply hierarchical prefix transformation
-        
-        Args:
-            features: [batch_size, seq_len, hidden_size]
-            layer_idx: Current layer index
-        Returns:
-            hierarchical_bias: [batch_size, seq_len, hidden_size]
-        """
         # Global component (shared knowledge)
         global_bias = self.global_matrix(features)
         
@@ -128,22 +97,13 @@ class HierarchicalPrefixTuning(nn.Module):
         return hierarchical_bias
 
 class EnhancedPrefixTuningPlus(nn.Module):
-    """
-    Enhanced Prefix-Tuning+ with two key research contributions:
-    1. Adaptive Feature Mapping (layer-specific + content-adaptive)
-    2. Hierarchical Prefix Structure (global + local components)
-    
-    This is a focused, clean extension of the original paper.
-    """
     def __init__(self, hidden_size: int, num_layers: int):
         super().__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         
-        # Research Contribution 1: Adaptive Feature Mapping
         self.adaptive_mapper = AdaptiveFeatureMapping(hidden_size, num_layers)
         
-        # Research Contribution 2: Hierarchical Prefix Structure  
         self.hierarchical_prefix = HierarchicalPrefixTuning(hidden_size, num_layers)
         
         print(f"Enhanced Prefix-Tuning+ initialized:")
@@ -151,15 +111,6 @@ class EnhancedPrefixTuningPlus(nn.Module):
         print(f"- Hierarchical Prefix Structure: global + local components")
     
     def forward(self, query_states: torch.Tensor, layer_idx: int) -> torch.Tensor:
-        """
-        Apply enhanced prefix tuning transformation
-        
-        Args:
-            query_states: [batch_size, seq_len, hidden_size]
-            layer_idx: Current transformer layer index
-        Returns:
-            enhanced_bias: [batch_size, seq_len, hidden_size]
-        """
         # Step 1: Apply adaptive feature mapping φ(x)
         adaptive_features = self.adaptive_mapper(query_states, layer_idx)
         
@@ -169,7 +120,6 @@ class EnhancedPrefixTuningPlus(nn.Module):
         return enhanced_bias
 
 class EnhancedAttentionLayer(nn.Module):
-    """Attention layer with Enhanced Prefix-Tuning+"""
     
     def __init__(self, hidden_size: int, num_heads: int, enhanced_prefix_module: EnhancedPrefixTuningPlus):
         super().__init__()
@@ -177,14 +127,10 @@ class EnhancedAttentionLayer(nn.Module):
         self.num_heads = num_heads
         self.head_dim = hidden_size // num_heads
         self.scale = self.head_dim ** -0.5
-        
-        # Standard attention projections
         self.query_proj = nn.Linear(hidden_size, hidden_size)
         self.key_proj = nn.Linear(hidden_size, hidden_size)
         self.value_proj = nn.Linear(hidden_size, hidden_size)
         self.out_proj = nn.Linear(hidden_size, hidden_size)
-        
-        # Enhanced prefix tuning module
         self.enhanced_prefix_module = enhanced_prefix_module
         
     def forward(self, hidden_states: torch.Tensor, layer_idx: int = 0, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
@@ -227,8 +173,6 @@ class EnhancedAttentionLayer(nn.Module):
         return output
 
 class TransformerWithEnhancedPrefixTuning(nn.Module):
-    """Transformer model with Enhanced Prefix-Tuning+"""
-    
     def __init__(self, vocab_size: int, hidden_size: int = 512, num_layers: int = 6, 
                  num_heads: int = 8, max_seq_len: int = 512):
         super().__init__()
@@ -265,8 +209,7 @@ class TransformerWithEnhancedPrefixTuning(nn.Module):
         pos_emb = self.position_embedding(pos_ids)
         
         hidden_states = token_emb + pos_emb
-        
-        # Pass through transformer layers with enhanced prefix tuning
+
         for layer_idx, (layer, layer_norm) in enumerate(zip(self.layers, self.layer_norms)):
             # Pre-norm
             normed_hidden = layer_norm(hidden_states)
@@ -283,7 +226,6 @@ class TransformerWithEnhancedPrefixTuning(nn.Module):
         return logits
 
 def test_enhanced_prefix_tuning():
-    """Test the enhanced prefix tuning implementation"""
     
     print("Testing Enhanced Prefix-Tuning+ Implementation")
     print("=" * 60)
@@ -304,7 +246,6 @@ def test_enhanced_prefix_tuning():
         num_heads=num_heads
     )
     
-    # Create sample input
     input_ids = torch.randint(0, vocab_size, (batch_size, seq_len))
     
     print(f"Input shape: {input_ids.shape}")
@@ -381,7 +322,6 @@ def compare_with_baseline():
     print(f"  2. Hierarchical Prefix Structure: Global + local components")
 
 def analyze_improvements():
-    """Analyze the specific improvements over the original paper"""
     
     print("\nImprovement Analysis Over Original Paper")
     print("=" * 60)
